@@ -2,7 +2,7 @@
 
 /*
   Plugin Name: Soli Featured Image Plugin
-  Version: 0.0.1
+  Version: 0.1.5
   Author: Joran Out
 */
 

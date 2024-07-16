@@ -14,8 +14,8 @@ define( 'SOLI_EVENT__PLUGIN_DIR_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SOLI_EVENT__PLUGIN_DIR_URL', plugin_dir_url( __FILE__ ) );
 
 
-add_action( 'init', 'github_plugin_updater_init' );
-function github_plugin_updater_init() {
+add_action( 'init', 'soli_featured_image_plugin_updater_init' );
+function soli_featured_image_plugin_updater_init() {
 
   include_once 'updater.php';
 

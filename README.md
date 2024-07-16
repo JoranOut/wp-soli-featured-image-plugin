@@ -6,11 +6,11 @@
 # WP Soli featured image
 Plugin for wordpress dedicated to displaying an automated featured image block on [soli.nl](https://www.soli.nl)
 
-~Current Version:1.5~
+~Current Version:2.0~
 
-Contains (soon-ish&trade;):
-- A featured image block by default on all posts/pages
-- Automatic selection/proposal for images based on content
+Contains:
+- A featured image block by default on all posts/pages/events
+- Global image categories
 
 # Development
 

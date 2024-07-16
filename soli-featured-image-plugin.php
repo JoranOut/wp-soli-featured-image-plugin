@@ -2,11 +2,12 @@
 
 /*
   Plugin Name: Soli Featured Image Plugin
-  Version: 0.1.5
+  Version: 0.2.0
   Author: Joran Out
 */
 
-include_once('updater.php');
+require_once 'updater.php';
+require_once 'block/block.php';
 
 if (!defined('ABSPATH')) exit; // Exit if accessed directly
 define( 'SOLI_EVENT__PLUGIN_DIR_PATH', plugin_dir_path( __FILE__ ) );

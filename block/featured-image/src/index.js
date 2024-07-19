@@ -70,7 +70,6 @@ function EditComponent({attributes, setAttributes}) {
             }
         } else {
             setPotentialImageId(undefined);
-            editPost({featured_media: 0});
         }
     };
 

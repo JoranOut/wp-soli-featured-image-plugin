@@ -1,8 +1,9 @@
 <?php
+namespace Soli\FeaturedImage;
 
 /*
   Plugin Name: Soli Featured Image Plugin
-  Version: 0.2.0
+  Version: 2.0.1
   Author: Joran Out
 */
 
@@ -40,11 +41,4 @@ function soli_featured_image_plugin_updater_init() {
   }
 
 }
-
-class SoliAdmin {
-
-}
-
-$soliAdmin = new SoliAdmin();
-
 

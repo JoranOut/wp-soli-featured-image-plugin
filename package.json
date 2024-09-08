@@ -1,0 +1,19 @@
+{
+  "name": "featured-image",
+  "version": "1.0.0",
+  "description": "",
+  "main": "test.js",
+  "scripts": {
+    "build": "npm run build --workspace=blocks",
+    "publish": "node ./publish.js"
+  },
+  "workspaces": ["blocks/featured-image"],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@wordpress/scripts": "^24.2.0",
+    "archiver": "^7.0.1",
+    "express": "^4.19.2"
+  }
+}

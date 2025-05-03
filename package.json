@@ -4,10 +4,13 @@
   "description": "",
   "main": "test.js",
   "scripts": {
+    "wp-env": "wp-env start --debug",
     "build": "npm run build --workspace=blocks",
-    "publish": "node ./publish.js"
+    "publish": "npm run build && node ./publish.js"
   },
-  "workspaces": ["blocks/featured-image"],
+  "workspaces": [
+    "blocks/featured-image"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",

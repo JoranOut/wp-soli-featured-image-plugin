@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 import settingsSVG from "../../assets/img/settings.svg";
 import addCircleSVG from "../../assets/img/add_circle.svg";
 import ImageUploader from "../image-uploader/image-uploader";
+import ImageButton from "../ImageButton/ImageButton";
 
 function Settings({options, onChange}) {
     const [settings, setSettings] = useState(options ?? []);
@@ -14,6 +15,7 @@ function Settings({options, onChange}) {
     const [isOpen, setOpen] = useState(false);
 
     const openModal = () => {
+        console.log("open modal")
         setOpen(true);
     }
     const closeModal = () => setOpen(false);
@@ -69,8 +71,7 @@ function Settings({options, onChange}) {
 
     return (
         <div className="featured-image-settings">
-            <img
-                className={"edit-icon"}
+            <ImageButton
                 src={settingsSVG}
                 onClick={openModal}
             />

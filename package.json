@@ -15,8 +15,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@wordpress/scripts": "^24.2.0",
+    "@wordpress/scripts": "latest",
     "archiver": "^7.0.1",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "@wordpress/env": "latest"
   }
 }

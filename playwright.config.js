@@ -3,8 +3,12 @@ const { defineConfig, devices } = require('@playwright/test');
 /**
  * Playwright configuration for the Soli Featured Image plugin e2e tests.
  *
- * The tests run against the wp-env "tests" environment (port 8889) so that they
- * never touch the development database on port 8888.
+ * The tests run against the wp-env "tests" environment (port 8885) so that they
+ * never touch the development database on port 8884.
+ *
+ * `wp-scripts test-playwright` derives WP_BASE_URL from `env.tests.port` in
+ * .wp-env.json; the literal below is only the fallback for running Playwright
+ * directly, so it has to stay in sync with that port.
  *
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -16,7 +20,7 @@ module.exports = defineConfig({
 	workers: 1,
 	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
 	use: {
-		baseURL: process.env.WP_BASE_URL || 'http://localhost:8889',
+		baseURL: process.env.WP_BASE_URL || 'http://localhost:8885',
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 	},
@@ -28,7 +32,7 @@ module.exports = defineConfig({
 	],
 	webServer: {
 		command: 'npm run env:start',
-		url: process.env.WP_BASE_URL || 'http://localhost:8889',
+		url: process.env.WP_BASE_URL || 'http://localhost:8885',
 		reuseExistingServer: true,
 		timeout: 180000,
 	},

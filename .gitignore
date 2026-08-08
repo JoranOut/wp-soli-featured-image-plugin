@@ -316,3 +316,8 @@ wp-config.php
 
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij,wordpress,react,node
+
+# Playwright / e2e
+playwright-report/
+test-results/
+artifacts/

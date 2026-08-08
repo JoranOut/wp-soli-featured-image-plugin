@@ -3,7 +3,7 @@ import {useSelect, useDispatch} from '@wordpress/data';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
-import {useState, useEffect} from '@wordpress/element';
+import {useState, useEffect, useRef} from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 import ImageUploader from "./image-uploader/image-uploader";
 import Settings from "./settings/settings";
@@ -14,16 +14,9 @@ wp.blocks.registerBlockType("soli/featured-image", {
     icon: "cover-image",
     category: "development",
     supports: {
-        // Declare support for block's alignment.
-        // This adds support for all the options:
-        // left, center, right, wide, and full.
         align: true
     },
     attributes: {
-        selectedGroups: {
-            type: 'array',
-            default: []
-        },
         lock: {
             move: 'true',
             remove: 'true',
@@ -34,12 +27,13 @@ wp.blocks.registerBlockType("soli/featured-image", {
     },
 })
 
-function EditComponent({attributes, setAttributes}) {
+function EditComponent() {
     const featuredImageId = useSelect((select) => select('core/editor').getEditedPostAttribute('featured_media'));
+    const postCategories = useSelect((select) => select('core/editor').getEditedPostAttribute('categories')) ?? [];
     const [potentialImageId, setPotentialImageId] = useState();
-    const [selectedOptions, setSelectedOptions] = useState([]);
-    const [options, setOptions] = useState([]);
+    const [categories, setCategories] = useState([]);
     const {editPost} = useDispatch('core/editor');
+    const internalUpdate = useRef(false);
 
     const onUpdateImage = (media) => {
         if (media) {
@@ -49,35 +43,34 @@ function EditComponent({attributes, setAttributes}) {
         }
     };
 
-    const handleChange = (changedOption, isChecked) => {
-        let updatedSelectedOptions = [...selectedOptions];
-
+    const handleChange = (category, isChecked) => {
+        internalUpdate.current = true;
+        let updatedIds;
         if (isChecked) {
-            updatedSelectedOptions.push(changedOption);
+            updatedIds = [...postCategories, category.category_id];
         } else {
-            updatedSelectedOptions = updatedSelectedOptions.filter(option => option.label !== changedOption.label);
+            updatedIds = postCategories.filter(id => id !== category.category_id);
         }
 
-        setSelectedOptions(updatedSelectedOptions);
-        // editPost({ meta: { soli_groups: updatedSelectedOptions } });
-        setAttributes({...options, selectedGroups: updatedSelectedOptions.flatMap(option => option.label)})
-        if (updatedSelectedOptions.length > 0) {
-            const randomOptionId = selectRandomOption(updatedSelectedOptions);
+        editPost({categories: updatedIds});
 
-            setPotentialImageId(randomOptionId);
+        const selectedCats = categories.filter(c => updatedIds.includes(c.category_id));
+        if (selectedCats.length > 0) {
+            const randomImageId = selectRandomImage(selectedCats);
+            setPotentialImageId(randomImageId);
             if (!featuredImageId) {
-                refreshImage(randomOptionId)
+                refreshImage(randomImageId);
             }
         } else {
             setPotentialImageId(undefined);
         }
     };
 
-    const selectRandomOption = (availableOptions) => {
-        const optionsWithValues = availableOptions.filter(option => option.value !== '');
-        const randomOption = optionsWithValues[Math.floor(Math.random() * optionsWithValues.length)];
-
-        return randomOption?.value;
+    const selectRandomImage = (availableCategories) => {
+        const catsWithImages = availableCategories.filter(c => c.image_id > 0);
+        if (catsWithImages.length === 0) return undefined;
+        const randomCat = catsWithImages[Math.floor(Math.random() * catsWithImages.length)];
+        return randomCat.image_id;
     }
 
     const refreshImage = (id) => {
@@ -88,39 +81,61 @@ function EditComponent({attributes, setAttributes}) {
         return potentialImageId != null && featuredImageId != null && parseInt(potentialImageId) !== parseInt(featuredImageId);
     }
 
-    const refreshOptions = (newOptions) => {
-        setSelectedOptions(newOptions.filter(o => attributes.selectedGroups?.includes(o.label)) ?? [])
-        setOptions(newOptions?.length ? newOptions : [])
-
-        if(newOptions?.length > 0 && featuredImageId == null){
-            refreshImage(selectRandomOption(newOptions));
-        }
-    }
+    const fetchCategories = () => {
+        apiFetch({path: '/soli_featured_image/v1/category-images'})
+            .then(response => {
+                setCategories(response ?? []);
+                if (response?.length > 0 && featuredImageId == null) {
+                    const selectedCats = response.filter(c => postCategories.includes(c.category_id));
+                    if (selectedCats.length > 0) {
+                        refreshImage(selectRandomImage(selectedCats));
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching categories:', error));
+    };
 
     useEffect(() => {
-        apiFetch({path: '/soli_featured_image/v1/options'})
-            .then(response => refreshOptions(response))
-            .catch(error => console.error('Error fetching options:', error));
+        fetchCategories();
     }, []);
+
+    // Bidirectional sync: when postCategories change externally (e.g. sidebar),
+    // update the potential featured image
+    useEffect(() => {
+        if (internalUpdate.current) {
+            internalUpdate.current = false;
+            return;
+        }
+        if (categories.length === 0) return;
+
+        const selectedCats = categories.filter(c => postCategories.includes(c.category_id));
+        if (selectedCats.length > 0) {
+            const randomImageId = selectRandomImage(selectedCats);
+            setPotentialImageId(randomImageId);
+            if (!featuredImageId) {
+                refreshImage(randomImageId);
+            }
+        } else {
+            setPotentialImageId(undefined);
+        }
+    }, [postCategories]);
 
     return (
         <div className="soli-featured-image">
             <Settings
-                options={options}
-                onChange={(newOptions) =>  refreshOptions(newOptions)}
+                onSave={() => fetchCategories()}
             />
             <FormGroup className="group-options">
-                {options.sort().map((option, i) => (
+                {categories.sort((a, b) => a.name.localeCompare(b.name)).map((category) => (
                     <FormControlLabel
-                        key={i}
+                        key={category.category_id}
                         control={
                             <Checkbox
-                                checked={selectedOptions?.flatMap(o => o.label).includes(option.label)}
-                                onChange={(event) => handleChange(option, event.target.checked)}
-                                value={option}
+                                checked={postCategories.includes(category.category_id)}
+                                onChange={(event) => handleChange(category, event.target.checked)}
                             />
                         }
-                        label={option.label}
+                        label={category.name}
                     />
                 ))}
             </FormGroup>
@@ -136,5 +151,3 @@ function EditComponent({attributes, setAttributes}) {
         </div>
     );
 }
-
-

@@ -11,8 +11,10 @@ files.forEach(file => {
     }
 });
 
-// Step 2a: Read the readme.md file
-const readmeContent = fs.readFileSync(path.join(__dirname, 'readme.md'), 'utf8');
+// Step 2a: Read the README.md file
+// NOTE: the filename is case sensitive on Linux (CI runners), so use the
+// exact name of the file as it is tracked in git.
+const readmeContent = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
 
 // Step 2b: Extract Plugin Name and Current Version using regex
 const pluginNameMatch = readmeContent.match(/~Plugin Name:\s*(.+?)~/);
@@ -73,6 +75,12 @@ archive.glob('**/*', {
         '.gitignore',
         '*.zip',
         'publish.js',
+        '.github/**',
+        'e2e/**',
+        'playwright.config.js',
+        'playwright-report/**',
+        'test-results/**',
+        'artifacts/**',
     ]
 });
 

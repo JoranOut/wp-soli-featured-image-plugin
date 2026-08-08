@@ -95,6 +95,32 @@ async function authenticatedRest( page, nonce, { route, method = 'GET', body } )
 	);
 }
 
+/**
+ * Creates a category and returns its id and name.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string}                          nonce
+ * @param {string}                          name  Category name.
+ * @return {Promise<{id: number, name: string}>} The created category.
+ */
+async function createCategory( page, nonce, name ) {
+	const { status, body } = await authenticatedRest( page, nonce, {
+		route: '/wp/v2/categories',
+		method: 'POST',
+		body: { name },
+	} );
+
+	if ( status !== 201 ) {
+		throw new Error(
+			`Could not create category "${ name }": ${ status } ${ JSON.stringify(
+				body
+			) }`
+		);
+	}
+
+	return { id: body.id, name: body.name };
+}
+
 module.exports = {
 	ADMIN_USER,
 	ADMIN_PASSWORD,
@@ -102,4 +128,5 @@ module.exports = {
 	loginAsAdmin,
 	loginAndGetNonce,
 	authenticatedRest,
+	createCategory,
 };

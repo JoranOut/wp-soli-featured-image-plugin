@@ -12,6 +12,7 @@ const {
 	loginAndGetNonce,
 	authenticatedRest,
 	createCategory,
+	expectNoPhpDiagnostics,
 } = require( './helpers' );
 
 const BLOCK_MARKUP = '<!-- wp:soli/featured-image /-->';
@@ -61,6 +62,31 @@ test.describe( 'Featured image block front-end', () => {
 		pageId = created.body.id;
 
 		await context.close();
+	} );
+
+	// Every front-end page this spec loads runs the block's `render_callback`,
+	// so each one is also a PHP diagnostics probe. Asserting here means a new
+	// test cannot be added that silently skips the check.
+	test.afterEach( async ( { page } ) => {
+		if ( ! page.url().startsWith( 'http' ) ) {
+			return;
+		}
+
+		await expectNoPhpDiagnostics( page );
+	} );
+
+	test( 'does not emit PHP errors while rendering the block', async ( {
+		page,
+	} ) => {
+		await page.goto( `/?page_id=${ pageId }` );
+
+		// The `render_callback` output must actually be on the page, otherwise
+		// the diagnostics assertion below would be vacuous. `data-attributes`
+		// survives hydration, unlike the `block-featured-image` class that
+		// frontend.js strips.
+		await expect( page.locator( '[data-attributes]' ) ).toHaveCount( 1 );
+
+		await expectNoPhpDiagnostics( page );
 	} );
 
 	test( 'renders only the categories that opted in', async ( { page } ) => {

@@ -5,8 +5,54 @@
  * through the `?rest_route=` fallback instead of `/wp-json/`.
  */
 
+const { expect } = require( '@playwright/test' );
+
 const ADMIN_USER = 'admin';
 const ADMIN_PASSWORD = 'password';
+
+/**
+ * Fragments of paths that identify this plugin's own PHP files.
+ *
+ * Used to scope the softer PHP diagnostics (warnings, notices, deprecations) to
+ * code this repository owns, so that unrelated WordPress core or theme noise
+ * cannot turn CI red. `blocks/featured-image` covers the block's
+ * `render_callback` in `blocks/featured-image/index.php`.
+ */
+const PLUGIN_PHP_FILES =
+	'soli-featured-image-plugin\\.php|blocks/(?:block|settings)\\.php|blocks/featured-image';
+
+/** Diagnostics that are never acceptable, wherever they come from. */
+const FATAL_ERROR_PATTERN = /Fatal error|Parse error/i;
+
+/** Softer diagnostics, but only when they point at this plugin's files. */
+const PLUGIN_DIAGNOSTIC_PATTERN = new RegExp(
+	'(Warning|Notice|Deprecated):[^\\n]*(' + PLUGIN_PHP_FILES + ')',
+	'i'
+);
+
+/**
+ * Asserts that the currently loaded page contains no PHP diagnostics.
+ *
+ * `WP_DEBUG` and `WP_DEBUG_DISPLAY` are enabled for the wp-env `tests`
+ * environment (see `.wp-env.json`), so PHP diagnostics are printed into the
+ * rendered document. Anything PHP emits before `<html>` or inside `<head>` is
+ * relocated into the body by the HTML parser, so reading the body text catches
+ * diagnostics from any point in the request.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function expectNoPhpDiagnostics( page ) {
+	const url = page.url();
+	const body = await page.locator( 'body' ).innerText();
+
+	expect( body, `PHP fatal/parse error rendered by ${ url }` ).not.toMatch(
+		FATAL_ERROR_PATTERN
+	);
+	expect(
+		body,
+		`PHP warning/notice/deprecation from this plugin rendered by ${ url }`
+	).not.toMatch( PLUGIN_DIAGNOSTIC_PATTERN );
+}
 
 /**
  * Builds a REST URL that works with plain permalinks.
@@ -124,9 +170,13 @@ async function createCategory( page, nonce, name ) {
 module.exports = {
 	ADMIN_USER,
 	ADMIN_PASSWORD,
+	PLUGIN_PHP_FILES,
+	FATAL_ERROR_PATTERN,
+	PLUGIN_DIAGNOSTIC_PATTERN,
 	restUrl,
 	loginAsAdmin,
 	loginAndGetNonce,
 	authenticatedRest,
 	createCategory,
+	expectNoPhpDiagnostics,
 };

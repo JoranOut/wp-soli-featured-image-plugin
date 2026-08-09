@@ -169,9 +169,9 @@ class WP_GitHub_Updater {
 			$this->config['zip_url'] = $zip_url;
 		}
 
-		// The installed version has to be read before the release lookup: the
-		// update channel is derived from it, so get_channel_release() cannot
-		// run until config['version'] is known.
+		// Local data only - nothing here may touch the network, see
+		// resolve_remote(). Reading the installed version is what lets that
+		// later lookup pick a channel, so it has to happen first.
 		$plugin_data = $this->get_plugin_data();
 		if ( ! isset( $this->config['plugin_name'] ) )
 			$this->config['plugin_name'] = $plugin_data['Name'];

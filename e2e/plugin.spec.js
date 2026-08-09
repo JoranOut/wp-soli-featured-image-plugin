@@ -3,7 +3,12 @@
  */
 
 const { test, expect } = require( '@playwright/test' );
-const { loginAsAdmin, loginAndGetNonce, authenticatedRest } = require( './helpers' );
+const {
+	loginAsAdmin,
+	loginAndGetNonce,
+	authenticatedRest,
+	expectNoPhpDiagnostics,
+} = require( './helpers' );
 
 test.describe( 'Plugin activation', () => {
 	test( 'is active in the WordPress admin', async ( { page } ) => {
@@ -26,12 +31,10 @@ test.describe( 'Plugin activation', () => {
 		// WP_DEBUG_DISPLAY is enabled in .wp-env.json, so PHP diagnostics end up
 		// in the rendered page. Fatals are never acceptable; softer diagnostics
 		// are only asserted for this plugin's own files so that unrelated
-		// WordPress core deprecations cannot turn CI red.
-		const body = await page.locator( 'body' ).innerText();
-		expect( body ).not.toMatch( /Fatal error|Parse error/i );
-		expect( body ).not.toMatch(
-			/(Warning|Notice|Deprecated):[^\n]*(soli-featured-image-plugin\.php|blocks\/(block|settings)\.php|blocks\/featured-image)/i
-		);
+		// WordPress core deprecations cannot turn CI red. This only covers the
+		// admin request; the block's render_callback runs on the front end and
+		// is asserted in block-render.spec.js.
+		await expectNoPhpDiagnostics( page );
 	} );
 
 	test( 'registers the soli/featured-image block type', async ( { page } ) => {

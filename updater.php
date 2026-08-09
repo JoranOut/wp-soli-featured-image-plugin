@@ -69,6 +69,12 @@ class WP_GitHub_Updater {
 	 */
 	private $channel_release;
 
+	/**
+	 * @var $remote_resolved whether the GitHub lookups have already run this request
+	 * @access private
+	 */
+	private $remote_resolved = false;
+
 
 	/**
 	 * Class Constructor
@@ -182,6 +188,33 @@ class WP_GitHub_Updater {
 		if ( ! isset( $this->config['readme'] ) )
 			$this->config['readme'] = 'README.md';
 
+	}
+
+
+	/**
+	 * Resolve everything that needs a call to GitHub
+	 *
+	 * Deliberately not called from the constructor. set_defaults() runs on
+	 * `init` for every wp-admin request, so resolving there cost two API calls
+	 * per admin page view - against GitHub's unauthenticated limit of 60 per
+	 * hour, counted per source IP rather than per site or per plugin. That is
+	 * roughly 30 page views an hour for a single plugin, and about 2.5 once a
+	 * dozen plugins on the same host each do it, at which point every site on
+	 * that IP starts reading stale data it cannot refresh.
+	 *
+	 * WordPress only needs any of this when it actually checks for updates -
+	 * every 12 hours, or on an explicit force-check - so resolve on first use
+	 * and memoise for the rest of the request.
+	 *
+	 * @since 1.7
+	 * @return void
+	 */
+	public function resolve_remote() {
+		if ( $this->remote_resolved )
+			return;
+
+		$this->remote_resolved = true;
+
 		$release = $this->get_channel_release();
 
 		if ( ! isset( $this->config['new_version'] ) )
@@ -197,7 +230,6 @@ class WP_GitHub_Updater {
 
 		if ( ! isset( $this->config['description'] ) )
 			$this->config['description'] = $this->get_description();
-
 	}
 
 
@@ -220,7 +252,13 @@ class WP_GitHub_Updater {
 	 * @return mixed
 	 */
 	public function http_request_sslverify( $args, $url ) {
-		if ( $this->config[ 'zip_url' ] == $url )
+		// The download happens in a later request than the update check, so
+		// config['zip_url'] may still hold the unresolved fallback by then -
+		// match any URL on the repo instead. Never resolve from inside this
+		// filter: it runs on every HTTP request, including our own, and would
+		// recurse.
+		if ( $this->config[ 'zip_url' ] == $url
+			|| ( ! empty( $this->config['github_url'] ) && 0 === strpos( $url, $this->config['github_url'] ) ) )
 			$args[ 'sslverify' ] = $this->config[ 'sslverify' ];
 
 		return $args;
@@ -467,6 +505,10 @@ class WP_GitHub_Updater {
 		if ( empty( $transient->checked ) )
 			return $transient;
 
+		// Resolve here rather than in the constructor: this runs only when
+		// WordPress genuinely checks for updates, not on every admin request.
+		$this->resolve_remote();
+
 		// check the version and decide if it's new
 		$update = version_compare( $this->config['new_version'], $this->config['version'] );
 
@@ -500,6 +542,10 @@ class WP_GitHub_Updater {
 		// Check if this call API is for the right plugin
 		if ( !isset( $response->slug ) || $response->slug != $this->config['slug'] )
 			return false;
+
+		// Only reached on this plugin's details screen, so the lookup is worth
+		// making here; every other plugins_api call costs nothing.
+		$this->resolve_remote();
 
 		$response->slug = $this->config['slug'];
 		$response->plugin_name  = $this->config['plugin_name'];

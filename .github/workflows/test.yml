@@ -32,6 +32,36 @@ jobs:
       - name: Start wp-env
         run: npm run env:start
 
+      - name: Verify the WordPress under test is the one we claim to support
+        run: |
+          set -euo pipefail
+          # The release workflows stamp the plugin's 'tested' value from
+          # wordpress.org's current release, on the assumption that .wp-env.json
+          # pins no core version and therefore installs exactly that. Prove the
+          # assumption here rather than trusting it - otherwise the plugin can
+          # advertise compatibility with a version it never ran against.
+          # Note the run container is tests-cli, not tests.
+          RAW=$(npx wp-env run tests-cli wp core version 2>&1 | tr -d '\r')
+          UNDER_TEST=$(printf '%s\n' "$RAW" | grep -oE '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | head -1 || true)
+          LATEST=$(curl -sf https://api.wordpress.org/core/version-check/1.7/ \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).offers[0].current))')
+
+          if [ -z "$UNDER_TEST" ]; then
+            echo "::error::could not read the WordPress version from wp-env. Raw output:"
+            printf '%s\n' "$RAW"
+            exit 1
+          fi
+
+          echo "wp-env is running WordPress ${UNDER_TEST}; wordpress.org current is ${LATEST}"
+          echo "WordPress under test: **${UNDER_TEST}**" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$UNDER_TEST" != "$LATEST" ]; then
+            echo "::error::wp-env ran WordPress ${UNDER_TEST} but wordpress.org current is ${LATEST}."
+            echo "::error::The release workflows would stamp 'tested' => '${LATEST}', a version this suite never exercised."
+            echo "::error::Usual causes: .wp-env.json now pins a core version, or WordPress released mid-run (re-run the job)."
+            exit 1
+          fi
+
       - name: Run Playwright tests
         run: npm run test:e2e
 

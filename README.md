@@ -1,13 +1,21 @@
-![npm](https://img.shields.io/badge/npm-v9.5.0-fb8817)
-![node](https://img.shields.io/badge/node-v16.13.0-43853d)
-![wp_env](https://img.shields.io/badge/wp&dash;env-v5.12.0-40a8af)
-![wordpress](https://img.shields.io/badge/Wordpress-v6.3.1-3858e9)
+[![version](https://img.shields.io/github/package-json/v/JoranOut/wp-soli-featured-image-plugin?label=version&color=3858e9)](https://github.com/JoranOut/wp-soli-featured-image-plugin/releases)
+[![nightly](https://img.shields.io/github/v/release/JoranOut/wp-soli-featured-image-plugin?include_prereleases&label=nightly&color=fb8817)](https://github.com/JoranOut/wp-soli-featured-image-plugin/releases)
+[![tested up to](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.wordpress.org%2Fcore%2Fversion-check%2F1.7%2F&query=%24.offers%5B0%5D.current&label=tested%20up%20to&prefix=WP%20&color=40a8af)](https://wordpress.org/download/releases/)
+[![requires](https://img.shields.io/badge/requires-WP%206.0%2B-40a8af)](https://wordpress.org/download/releases/)
+[![wp-env](https://img.shields.io/github/package-json/dependency-version/JoranOut/wp-soli-featured-image-plugin/dev/@wordpress/env?label=wp-env&color=40a8af)](https://www.npmjs.com/package/@wordpress/env)
+[![node](https://img.shields.io/github/package-json/engines.node/JoranOut/wp-soli-featured-image-plugin?label=node&color=43853d)](https://nodejs.org)
+[![license](https://img.shields.io/github/license/JoranOut/wp-soli-featured-image-plugin?color=blue)](LICENSE)
 
 # WP Soli featured image
 Plugin for wordpress dedicated to displaying an automated featured image block on [soli.nl](https://www.soli.nl)
 
+<!-- Machine-readable markers. publish.js reads the plugin name to name the zip,
+     and the release workflows rewrite the version here when packaging a build.
+     Kept in a comment because a single tilde renders as strikethrough on GitHub;
+     the badges above are the human-readable version. Do not reformat.
 ~Plugin Name: wp-soli-featured-image-plugin~
 ~Current Version: 2.0.3~
+-->
 
 Contains:
 - A featured image block by default on all posts/pages/events

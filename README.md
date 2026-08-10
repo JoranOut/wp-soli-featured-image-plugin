@@ -1,9 +1,9 @@
 [![version](https://img.shields.io/github/package-json/v/JoranOut/wp-soli-featured-image-plugin?label=version&color=3858e9)](https://github.com/JoranOut/wp-soli-featured-image-plugin/releases)
 [![nightly](https://img.shields.io/github/v/release/JoranOut/wp-soli-featured-image-plugin?include_prereleases&label=nightly&color=fb8817)](https://github.com/JoranOut/wp-soli-featured-image-plugin/releases)
 [![tested up to](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.wordpress.org%2Fcore%2Fversion-check%2F1.7%2F&query=%24.offers%5B0%5D.current&label=tested%20up%20to&prefix=WP%20&color=40a8af)](https://wordpress.org/download/releases/)
-[![requires](https://img.shields.io/badge/requires-WP%206.0%2B-40a8af)](https://wordpress.org/download/releases/)
+[![requires](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FJoranOut%2Fwp-soli-featured-image-plugin%2Fmain%2Fpackage.json&query=%24.wordpress.requiresAtLeast&label=requires&prefix=WP%20&color=40a8af)](https://wordpress.org/download/releases/)
 [![wp-env](https://img.shields.io/github/package-json/dependency-version/JoranOut/wp-soli-featured-image-plugin/dev/@wordpress/env?label=wp-env&color=40a8af)](https://www.npmjs.com/package/@wordpress/env)
-[![node](https://img.shields.io/github/package-json/engines.node/JoranOut/wp-soli-featured-image-plugin?label=node&color=43853d)](https://nodejs.org)
+[![node](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FJoranOut%2Fwp-soli-featured-image-plugin%2Fmain%2Fpackage.json&query=%24.engines.node&label=node&color=43853d)](https://nodejs.org)
 [![license](https://img.shields.io/github/license/JoranOut/wp-soli-featured-image-plugin?color=blue)](LICENSE)
 
 # WP Soli featured image

@@ -34,7 +34,7 @@ add_action('init', function () {
       // releases API and overrides this with the release's zip asset.
       'zip_url' => 'https://github.com/JoranOut/wp-soli-featured-image-plugin/releases/latest/download/wp-soli-featured-image-plugin.zip', // the zip url of the GitHub repo
       'sslverify' => true, // whether WP should check the validity of the SSL cert when getting an update, see https://github.com/jkudish/WordPress-GitHub-Plugin-Updater/issues/2 and https://github.com/jkudish/WordPress-GitHub-Plugin-Updater/issues/4 for details
-      'requires' => '6.0.0', // which version of WordPress does your plugin require?
+      'requires' => '6.9', // oldest branch the e2e suite covers; see package.json wordpress.requiresAtLeast
       // Rewritten at packaging time by the nightly and release workflows to the
       // WordPress version the e2e suite actually ran against, so the plugin
       // screen stops reporting "compatibility not tested". Do not reformat.

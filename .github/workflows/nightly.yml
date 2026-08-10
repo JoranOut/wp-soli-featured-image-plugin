@@ -96,6 +96,24 @@ jobs:
           test "$(node -p "require('./package.json').version")" = "$V"
           echo "Stamped $V into all version locations."
 
+      - name: Stamp tested-up-to WordPress version
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          # .wp-env.json pins no core version, so the e2e suite runs against
+          # whatever wordpress.org currently ships - and test.yml fails if that
+          # stops being true. Record it, so the plugin screen stops saying
+          # "compatibility with WordPress x.x: not tested".
+          WP=$(curl -sf https://api.wordpress.org/core/version-check/1.7/ \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).offers[0].current))')
+          test -n "$WP"
+          sed -i -E "s|('tested' => ')[^']*(')|\1${WP}\2|" soli-featured-image-plugin.php
+          if ! grep -qF -- "'tested' => '${WP}'" soli-featured-image-plugin.php; then
+            echo "::error::failed to stamp tested-up-to ${WP}"
+            exit 1
+          fi
+          echo "Stamped tested-up-to WordPress $WP."
+
       - name: Build package
         if: steps.guard.outputs.skip != 'true'
         run: |

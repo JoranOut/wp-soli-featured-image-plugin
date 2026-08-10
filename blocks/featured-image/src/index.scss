@@ -1,5 +1,7 @@
 .soli-featured-image {
-  background: #efefef;
+  // Outlined rather than filled: the grey fill competed with the post content
+  // around it. #dcdcde is the editor's own neutral border grey.
+  border: 1px solid #dcdcde;
   border-radius: 15px;
   padding: 15px 20px;
 

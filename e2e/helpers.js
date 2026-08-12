@@ -39,11 +39,27 @@ const PLUGIN_DIAGNOSTIC_PATTERN = new RegExp(
  * relocated into the body by the HTML parser, so reading the body text catches
  * diagnostics from any point in the request.
  *
+ * The body is read with `textContent`, NOT `innerText`. `innerText` reflects
+ * *rendered* text, so it silently omits anything inside an element that is
+ * hidden — a container that ships `display: none` until JavaScript reveals it,
+ * a collapsed panel, an inactive tab. A PHP diagnostic emitted inside such a
+ * container is then invisible to this assertion, which passes vacuously. That
+ * is not hypothetical: measured in `wp-soli-ticket-scanner-plugin`, whose
+ * template ships `#pin-screen` and `#scanner-screen` hidden, one injected error
+ * produced 3 failures via `textContent` and only 2 via `innerText`. Do not
+ * "optimise" this back to `innerText`.
+ *
+ * `textContent` also returns the text of `<script>` and `<style>` elements. On
+ * this plugin's pages that is harmless — no script or style source matches the
+ * patterns below — so no filtering is added. If a future page inlines a script
+ * containing something like `Warning: …`, scope the read rather than reverting
+ * to `innerText`.
+ *
  * @param {import('@playwright/test').Page} page
  */
 async function expectNoPhpDiagnostics( page ) {
 	const url = page.url();
-	const body = await page.locator( 'body' ).innerText();
+	const body = await page.locator( 'body' ).textContent();
 
 	expect( body, `PHP fatal/parse error rendered by ${ url }` ).not.toMatch(
 		FATAL_ERROR_PATTERN

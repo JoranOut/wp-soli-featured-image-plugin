@@ -31,6 +31,55 @@ const PLUGIN_DIAGNOSTIC_PATTERN = new RegExp(
 );
 
 /**
+ * Reads the body text of the current page twice, for the two assertions below.
+ *
+ * Both reads use `textContent`, NOT `innerText`. `innerText` reflects
+ * *rendered* text, so it silently omits anything inside an element that is
+ * hidden — a container that ships `display: none` until JavaScript reveals it,
+ * a collapsed panel, an inactive tab. A PHP diagnostic emitted inside such a
+ * container is then invisible to the assertion, which passes vacuously. That is
+ * not hypothetical: measured in `wp-soli-ticket-scanner-plugin`, whose template
+ * ships `#pin-screen` and `#scanner-screen` hidden, one injected error produced
+ * 3 failures via `textContent` and only 2 via `innerText`. Do not "optimise"
+ * this back to `innerText`.
+ *
+ * The two reads differ only in whether script/style sources are included, and
+ * that difference is deliberate in both directions:
+ *
+ * - `markup` (a body clone with `script, style, template, noscript` removed)
+ *   feeds `PLUGIN_DIAGNOSTIC_PATTERN`. That pattern matches *within a line*
+ *   (`[^\n]*`), and wp-admin prints large single-line JSON blobs into inline
+ *   scripts, so a string containing `Warning:` near a plugin path could match
+ *   script text and turn CI red for nothing. The path-scoped pattern must NOT
+ *   see script text. Scoping the read is the right fix; loosening the pattern
+ *   to tolerate script noise would blunt the diagnostic itself.
+ *
+ * - `full` (the live body, scripts included) feeds `FATAL_ERROR_PATTERN`. That
+ *   pattern must see script text: a fatal thrown while an inline script is
+ *   being printed lands inside that `<script>` node, and a stripped clone would
+ *   lose it. `Fatal error` / `Parse error` are also far less likely than
+ *   `Warning:` to appear in legitimate script source.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @return {Promise<{full: string, markup: string}>} Full body text, and body
+ *                                                   text with script/style
+ *                                                   sources removed.
+ */
+function readBodyText( page ) {
+	return page.evaluate( () => {
+		const clone = document.body.cloneNode( true );
+		clone
+			.querySelectorAll( 'script, style, template, noscript' )
+			.forEach( ( node ) => node.remove() );
+
+		return {
+			full: document.body.textContent || '',
+			markup: clone.textContent || '',
+		};
+	} );
+}
+
+/**
  * Asserts that the currently loaded page contains no PHP diagnostics.
  *
  * `WP_DEBUG` and `WP_DEBUG_DISPLAY` are enabled for the wp-env `tests`
@@ -39,33 +88,20 @@ const PLUGIN_DIAGNOSTIC_PATTERN = new RegExp(
  * relocated into the body by the HTML parser, so reading the body text catches
  * diagnostics from any point in the request.
  *
- * The body is read with `textContent`, NOT `innerText`. `innerText` reflects
- * *rendered* text, so it silently omits anything inside an element that is
- * hidden — a container that ships `display: none` until JavaScript reveals it,
- * a collapsed panel, an inactive tab. A PHP diagnostic emitted inside such a
- * container is then invisible to this assertion, which passes vacuously. That
- * is not hypothetical: measured in `wp-soli-ticket-scanner-plugin`, whose
- * template ships `#pin-screen` and `#scanner-screen` hidden, one injected error
- * produced 3 failures via `textContent` and only 2 via `innerText`. Do not
- * "optimise" this back to `innerText`.
- *
- * `textContent` also returns the text of `<script>` and `<style>` elements. On
- * this plugin's pages that is harmless — no script or style source matches the
- * patterns below — so no filtering is added. If a future page inlines a script
- * containing something like `Warning: …`, scope the read rather than reverting
- * to `innerText`.
+ * See `readBodyText()` for why this reads `textContent` and not `innerText`,
+ * and why the two assertions read different bodies.
  *
  * @param {import('@playwright/test').Page} page
  */
 async function expectNoPhpDiagnostics( page ) {
 	const url = page.url();
-	const body = await page.locator( 'body' ).textContent();
+	const { full, markup } = await readBodyText( page );
 
-	expect( body, `PHP fatal/parse error rendered by ${ url }` ).not.toMatch(
+	expect( full, `PHP fatal/parse error rendered by ${ url }` ).not.toMatch(
 		FATAL_ERROR_PATTERN
 	);
 	expect(
-		body,
+		markup,
 		`PHP warning/notice/deprecation from this plugin rendered by ${ url }`
 	).not.toMatch( PLUGIN_DIAGNOSTIC_PATTERN );
 }

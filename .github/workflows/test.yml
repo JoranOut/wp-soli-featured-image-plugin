@@ -44,8 +44,6 @@ jobs:
 
           if [ "${{ matrix.channel }}" = "latest" ]; then
             VERSION="$LATEST"
-            # Empty is falsy to wp-env, which then installs the newest release.
-            CORE=""
           else
             # Newest patch on the floor branch, so security fixes are picked up
             # without anyone editing the matrix.
@@ -58,12 +56,26 @@ jobs:
                   c.sort((a,b)=>{const x=k(a),y=k(b);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)-(y[i]||0);}return 0;});
                   console.log(c[c.length-1]);
                 })')
-            CORE="https://wordpress.org/wordpress-${VERSION}.zip"
           fi
 
           test -n "$VERSION"
+
+          # Both legs name their version as an explicit zip URL. Do not "simplify"
+          # the latest leg back to CORE="" and let wp-env pick the newest release:
+          #
+          # 1. wp-env's get-config-from-environment-vars.js guards the override
+          #    with `if ( process.env.WP_ENV_CORE )`, and an empty string is
+          #    falsy - so an empty CORE does not mean "newest", it means the
+          #    variable is ignored entirely and .wp-env.json decides.
+          # 2. .wp-env.json pins `core` to a wordpress.org zip, because
+          #    WordPress 7.0.4 shipped without its git tag and broke wp-env's
+          #    git-mirror resolution everywhere. That pin is deliberate and stays.
+          #
+          # Together those two make an empty CORE silently test whatever the pin
+          # happens to be, so the leg stops tracking latest the day the next
+          # release ships while still reporting itself as `e2e (WP latest)`.
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "WP_ENV_CORE=${CORE}" >> $GITHUB_ENV
+          echo "WP_ENV_CORE=https://wordpress.org/wordpress-${VERSION}.zip" >> $GITHUB_ENV
           echo "Leg '${{ matrix.channel }}' targets WordPress ${VERSION}"
 
       - name: Build block assets

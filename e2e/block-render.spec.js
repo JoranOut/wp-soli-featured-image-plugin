@@ -12,6 +12,7 @@ const {
 	loginAndGetNonce,
 	authenticatedRest,
 	createCategory,
+	createTopLevelCategory,
 	expectNoPhpDiagnostics,
 } = require( './helpers' );
 
@@ -119,6 +120,42 @@ test.describe( 'Featured image block front-end', () => {
 			page.locator( 'script[src*="blocks/featured-image/build/frontend.js"]' )
 		).toHaveCount( 1 );
 		expect( failed ).toEqual( [] );
+	} );
+
+	test( 'renders nothing for a category outside the orkesten parent, even with stale enabled-meta', async ( {
+		page,
+	} ) => {
+		const nonce = await loginAndGetNonce( page );
+
+		// The meta is set directly through core's terms endpoint, bypassing the
+		// plugin's save guard - the render side must still refuse it.
+		const outsider = await createTopLevelCategory(
+			page,
+			nonce,
+			'Buiten Orkesten ' + Date.now(),
+			{ soli_featured_image_enabled: true, soli_featured_image_id: 1 }
+		);
+
+		const created = await authenticatedRest( page, nonce, {
+			route: '/wp/v2/pages',
+			method: 'POST',
+			body: {
+				title: 'Featured image outsider e2e',
+				status: 'publish',
+				content: BLOCK_MARKUP,
+				categories: [ outsider.id ],
+			},
+		} );
+		expect( created.status ).toBe( 201 );
+
+		await page.goto( `/?page_id=${ created.body.id }` );
+
+		const raw = await page.evaluate( () => {
+			const el = document.querySelector( '[data-attributes]' );
+			return el ? el.getAttribute( 'data-attributes' ) : null;
+		} );
+		expect( raw ).not.toBeNull();
+		expect( JSON.parse( raw ) ).toEqual( [] );
 	} );
 
 	test( 'hydrates the block into a group list', async ( { page } ) => {

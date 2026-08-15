@@ -95,7 +95,7 @@ class SoliFeaturedImageBlock {
 
 $soliBlockIssueTracker = new SoliFeaturedImageBlock();
 
-function modify_post_type_args($args, $post_type) {
+function soli_featured_image_modify_post_type_args($args, $post_type) {
   if ('post' === $post_type || 'page' === $post_type) {
     $args['template'] = array(
       array('soli/featured-image', array(
@@ -109,4 +109,4 @@ function modify_post_type_args($args, $post_type) {
   return $args;
 }
 
-add_filter('register_post_type_args', 'modify_post_type_args', 10, 2);
+add_filter('register_post_type_args', 'soli_featured_image_modify_post_type_args', 10, 2);

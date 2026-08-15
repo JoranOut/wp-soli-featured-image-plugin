@@ -10,6 +10,7 @@ const {
 	loginAndGetNonce,
 	authenticatedRest,
 	createCategory,
+	createTopLevelCategory,
 } = require( './helpers' );
 
 const CATEGORY_IMAGES_ROUTE = '/soli_featured_image/v1/category-images';
@@ -119,6 +120,68 @@ test.describe( 'Category images REST API', () => {
 		expect(
 			update.body.find( ( item ) => item.category_id === category.id ).image_id
 		).toBe( 12 );
+	} );
+
+	test( 'never lists or saves a category outside the orkesten parent', async ( {
+		page,
+		request,
+	} ) => {
+		const nonce = await loginAndGetNonce( page );
+		const outsider = await createTopLevelCategory(
+			page,
+			nonce,
+			'Nieuws ' + Date.now()
+		);
+
+		// Not offered in the settings modal.
+		const all = await authenticatedRest( page, nonce, {
+			route: ALL_CATEGORIES_ROUTE,
+		} );
+		expect( all.status ).toBe( 200 );
+		expect(
+			all.body.find( ( item ) => item.category_id === outsider.id )
+		).toBeUndefined();
+
+		// A save attempt is silently skipped, not stored.
+		const update = await authenticatedRest( page, nonce, {
+			route: CATEGORY_IMAGES_ROUTE,
+			method: 'POST',
+			body: [ { category_id: outsider.id, enabled: true, image_id: 99 } ],
+		} );
+		expect( update.status ).toBe( 200 );
+		expect(
+			update.body.find( ( item ) => item.category_id === outsider.id )
+		).toBeUndefined();
+
+		// Not exposed publicly either.
+		const response = await request.get( restUrl( CATEGORY_IMAGES_ROUTE ) );
+		expect( response.status() ).toBe( 200 );
+		const published = await response.json();
+		expect(
+			published.find( ( item ) => item.category_id === outsider.id )
+		).toBeUndefined();
+	} );
+
+	test( 'ignores stale enabled-meta on a category outside the orkesten parent', async ( {
+		page,
+		request,
+	} ) => {
+		const nonce = await loginAndGetNonce( page );
+		// Set the plugin's term meta directly through core's terms endpoint,
+		// bypassing the plugin's save guard - the read side must still filter.
+		const outsider = await createTopLevelCategory(
+			page,
+			nonce,
+			'Stale ' + Date.now(),
+			{ soli_featured_image_enabled: true, soli_featured_image_id: 123 }
+		);
+
+		const response = await request.get( restUrl( CATEGORY_IMAGES_ROUTE ) );
+		expect( response.status() ).toBe( 200 );
+		const published = await response.json();
+		expect(
+			published.find( ( item ) => item.category_id === outsider.id )
+		).toBeUndefined();
 	} );
 
 	test( 'rejects items without a category id', async ( { page } ) => {

@@ -224,6 +224,27 @@ async function ensureOrkestenParent( page, nonce ) {
 	);
 }
 
+/**
+ * Negative-test helper: a category OUTSIDE the orkesten parent. `meta` can
+ * pre-set the plugin's term meta directly through core's terms endpoint,
+ * simulating stale enabled-meta that the plugin's own save guard would refuse.
+ */
+async function createTopLevelCategory( page, nonce, name, meta = undefined ) {
+	const { status, body } = await authenticatedRest( page, nonce, {
+		route: '/wp/v2/categories',
+		method: 'POST',
+		body: meta ? { name, meta } : { name },
+	} );
+
+	if ( status !== 201 ) {
+		throw new Error(
+			`Could not create top-level category "${ name }": ${ status } ${ JSON.stringify( body ) }`
+		);
+	}
+
+	return { id: body.id, name: body.name };
+}
+
 async function createCategory( page, nonce, name ) {
 	const parent = await ensureOrkestenParent( page, nonce );
 	const { status, body } = await authenticatedRest( page, nonce, {
@@ -254,6 +275,7 @@ module.exports = {
 	loginAndGetNonce,
 	authenticatedRest,
 	createCategory,
+	createTopLevelCategory,
 	ensureOrkestenParent,
 	expectNoPhpDiagnostics,
 };

@@ -71,7 +71,13 @@ class SoliFeaturedImageBlock {
       $post_categories = wp_get_post_categories($post_id, array('fields' => 'all'));
 
       if (!is_wp_error($post_categories)) {
+        // Only orchestra categories (under the 'orkesten' parent) can map an
+        // image; stale enabled-meta on other categories must not apply.
+        $orkesten_ids = soli_featured_image_orkesten_category_ids();
         foreach ($post_categories as $category) {
+          if (!in_array((int) $category->term_id, $orkesten_ids, true)) {
+            continue;
+          }
           $enabled = get_term_meta($category->term_id, 'soli_featured_image_enabled', true);
           if ($enabled) {
             $category_names[] = $category->name;

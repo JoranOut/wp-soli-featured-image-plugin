@@ -201,11 +201,35 @@ async function authenticatedRest( page, nonce, { route, method = 'GET', body } )
  * @param {string}                          name  Category name.
  * @return {Promise<{id: number, name: string}>} The created category.
  */
-async function createCategory( page, nonce, name ) {
+/**
+ * Only categories under the parent category with slug 'orkesten' count as
+ * orchestras, so test categories must live under it. Creates the parent on
+ * first use and returns its term id.
+ */
+async function ensureOrkestenParent( page, nonce ) {
 	const { status, body } = await authenticatedRest( page, nonce, {
 		route: '/wp/v2/categories',
 		method: 'POST',
-		body: { name },
+		body: { name: 'Orkesten', slug: 'orkesten' },
+	} );
+
+	if ( status === 201 ) {
+		return body.id;
+	}
+	if ( body && body.code === 'term_exists' && body.data && body.data.term_id ) {
+		return body.data.term_id;
+	}
+	throw new Error(
+		`Could not ensure 'orkesten' parent category: ${ status } ${ JSON.stringify( body ) }`
+	);
+}
+
+async function createCategory( page, nonce, name ) {
+	const parent = await ensureOrkestenParent( page, nonce );
+	const { status, body } = await authenticatedRest( page, nonce, {
+		route: '/wp/v2/categories',
+		method: 'POST',
+		body: { name, parent },
 	} );
 
 	if ( status !== 201 ) {
@@ -230,5 +254,6 @@ module.exports = {
 	loginAndGetNonce,
 	authenticatedRest,
 	createCategory,
+	ensureOrkestenParent,
 	expectNoPhpDiagnostics,
 };

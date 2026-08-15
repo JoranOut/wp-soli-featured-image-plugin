@@ -58,10 +58,33 @@ function soli_featured_image_register_endpoints() {
 	) );
 }
 
+/**
+ * Orchestras are communicated through the category taxonomy, but only the
+ * categories nested under the parent category with slug 'orkesten' count.
+ * When that parent does not exist, no category qualifies at all.
+ */
+function soli_featured_image_orkesten_category_ids() {
+	$parent = get_term_by( 'slug', 'orkesten', 'category' );
+	if ( ! $parent || is_wp_error( $parent ) ) {
+		return array();
+	}
+	$children = get_term_children( $parent->term_id, 'category' );
+	if ( is_wp_error( $children ) ) {
+		return array();
+	}
+	return array_map( 'intval', $children );
+}
+
 function soli_featured_image_get_category_images() {
+	$orkesten_ids = soli_featured_image_orkesten_category_ids();
+	if ( empty( $orkesten_ids ) ) {
+		return rest_ensure_response( array() );
+	}
+
 	$categories = get_terms( array(
 		'taxonomy'   => 'category',
 		'hide_empty' => false,
+		'include'    => $orkesten_ids,
 		'meta_query' => array(
 			array(
 				'key'   => 'soli_featured_image_enabled',
@@ -93,6 +116,8 @@ function soli_featured_image_save_category_images( $request ) {
 		return new WP_Error( 'invalid_data', 'Invalid data provided', array( 'status' => 400 ) );
 	}
 
+	$orkesten_ids = soli_featured_image_orkesten_category_ids();
+
 	foreach ( $items as $item ) {
 		if ( ! isset( $item['category_id'] ) ) {
 			return new WP_Error( 'invalid_data', 'Each item must have a category_id', array( 'status' => 400 ) );
@@ -101,7 +126,7 @@ function soli_featured_image_save_category_images( $request ) {
 		$category_id = absint( $item['category_id'] );
 		$term         = get_term( $category_id, 'category' );
 
-		if ( ! $term || is_wp_error( $term ) ) {
+		if ( ! $term || is_wp_error( $term ) || ! in_array( $category_id, $orkesten_ids, true ) ) {
 			continue;
 		}
 
@@ -119,9 +144,15 @@ function soli_featured_image_save_category_images( $request ) {
 }
 
 function soli_featured_image_get_all_categories() {
+	$orkesten_ids = soli_featured_image_orkesten_category_ids();
+	if ( empty( $orkesten_ids ) ) {
+		return rest_ensure_response( array() );
+	}
+
 	$categories = get_terms( array(
 		'taxonomy'   => 'category',
 		'hide_empty' => false,
+		'include'    => $orkesten_ids,
 	) );
 
 	if ( is_wp_error( $categories ) ) {

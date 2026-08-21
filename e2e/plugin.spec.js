@@ -43,8 +43,93 @@ test.describe( 'Plugin activation', () => {
 		const { status, body } = await authenticatedRest( page, nonce, {
 			route: '/wp/v2/block-types/soli/featured-image',
 		} );
+		const editorStyles =
+			body.editor_style_handles || body.editor_style || [];
 
 		expect( status ).toBe( 200 );
 		expect( body.name ).toBe( 'soli/featured-image' );
+		expect( Array.isArray( editorStyles ) ? editorStyles : [ editorStyles ] ).toContain(
+			'block-featured-image-css'
+		);
+	} );
+
+	test( 'loads the block stylesheet into the active editor document', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		await page.goto( '/wp-admin/post-new.php?post_type=page' );
+
+		const editorFrame = page.locator( 'iframe[name="editor-canvas"]' );
+
+		// The fully-iframed block editor (editor-canvas) was progressively
+		// introduced across WordPress versions. On older builds the block
+		// renders directly in the main document; on newer ones it lives inside
+		// the iframe. Both paths must be verified: the block must be visible and
+		// its stylesheet + emotion styles must land in the correct document.
+		const hasEditorCanvas = await editorFrame
+			.waitFor( { state: 'attached', timeout: 15000 } )
+			.then( () => true )
+			.catch( () => false );
+
+		if ( hasEditorCanvas ) {
+			// WP 7.x+ iframed editor: block and all styles live inside the iframe.
+			const editorCanvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+			await expect( editorCanvas.locator( '.soli-featured-image' ) ).toHaveCount(
+				1
+			);
+
+			const iframeAssets = await editorFrame.evaluate( ( iframe ) => {
+				const doc = iframe.contentDocument;
+
+				return {
+					stylesheets: Array.from(
+						doc.querySelectorAll( 'link[rel="stylesheet"]' ),
+						( link ) => link.href
+					),
+					emotionStyles: Array.from(
+						doc.querySelectorAll( 'style[data-emotion]' ),
+						( style ) => style.getAttribute( 'data-emotion' ) || ''
+					),
+				};
+			} );
+
+			expect(
+				iframeAssets.stylesheets.some( ( href ) =>
+					href.includes( '/blocks/featured-image/build/index.css' )
+				)
+			).toBe( true );
+			expect(
+				iframeAssets.emotionStyles.some( ( key ) =>
+					key.startsWith( 'soli-featured-image' )
+				)
+			).toBe( true );
+		} else {
+			// WP 6.x non-iframed editor: block and all styles live in the main
+			// document. The emotion cache targets blockRoot.ownerDocument.head,
+			// which is document.head when there is no iframe.
+			await expect( page.locator( '.soli-featured-image' ) ).toHaveCount( 1 );
+
+			const mainAssets = await page.evaluate( () => ( {
+				stylesheets: Array.from(
+					document.querySelectorAll( 'link[rel="stylesheet"]' ),
+					( link ) => link.href
+				),
+				emotionStyles: Array.from(
+					document.querySelectorAll( 'style[data-emotion]' ),
+					( style ) => style.getAttribute( 'data-emotion' ) || ''
+				),
+			} ) );
+
+			expect(
+				mainAssets.stylesheets.some( ( href ) =>
+					href.includes( '/blocks/featured-image/build/index.css' )
+				)
+			).toBe( true );
+			expect(
+				mainAssets.emotionStyles.some( ( key ) =>
+					key.startsWith( 'soli-featured-image' )
+				)
+			).toBe( true );
+		}
 	} );
 } );

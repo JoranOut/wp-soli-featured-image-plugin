@@ -1,9 +1,11 @@
 import "./index.scss"
+import createCache from '@emotion/cache';
+import {CacheProvider} from '@emotion/react';
 import {useSelect, useDispatch} from '@wordpress/data';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
-import {useState, useEffect, useRef} from '@wordpress/element';
+import {useState, useEffect, useMemo, useRef} from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 import ImageUploader from "./image-uploader/image-uploader";
 import Settings from "./settings/settings";
@@ -32,8 +34,12 @@ function EditComponent() {
     const postCategories = useSelect((select) => select('core/editor').getEditedPostAttribute('categories')) ?? [];
     const [potentialImageId, setPotentialImageId] = useState();
     const [categories, setCategories] = useState([]);
+    const [blockRoot, setBlockRoot] = useState(null);
     const {editPost} = useDispatch('core/editor');
     const internalUpdate = useRef(false);
+    const emotionCache = useMemo(() => blockRoot?.ownerDocument?.head
+        ? createCache({key: 'soli-featured-image', container: blockRoot.ownerDocument.head})
+        : null, [blockRoot]);
 
     const onUpdateImage = (media) => {
         if (media) {
@@ -121,33 +127,35 @@ function EditComponent() {
     }, [postCategories]);
 
     return (
-        <div className="soli-featured-image">
-            <Settings
-                onSave={() => fetchCategories()}
-            />
-            <FormGroup className="group-options">
-                {categories.sort((a, b) => a.name.localeCompare(b.name)).map((category) => (
-                    <FormControlLabel
-                        key={category.category_id}
-                        control={
-                            <Checkbox
-                                checked={postCategories.includes(category.category_id)}
-                                onChange={(event) => handleChange(category, event.target.checked)}
-                            />
-                        }
-                        label={category.name}
-                    />
-                ))}
-            </FormGroup>
-            {isNewImageAvailable() && <Button
-                variant="secondary"
-                onClick={() => refreshImage()}>
-                Ververs afbeelding
-            </Button>}
-            <ImageUploader
-                defaultImageId={featuredImageId}
-                onChange={(media) => onUpdateImage(media)}
-            />
+        <div className="soli-featured-image" ref={setBlockRoot}>
+            {emotionCache && <CacheProvider value={emotionCache}>
+                <Settings
+                    onSave={() => fetchCategories()}
+                />
+                <FormGroup className="group-options">
+                    {categories.sort((a, b) => a.name.localeCompare(b.name)).map((category) => (
+                        <FormControlLabel
+                            key={category.category_id}
+                            control={
+                                <Checkbox
+                                    checked={postCategories.includes(category.category_id)}
+                                    onChange={(event) => handleChange(category, event.target.checked)}
+                                />
+                            }
+                            label={category.name}
+                        />
+                    ))}
+                </FormGroup>
+                {isNewImageAvailable() && <Button
+                    variant="secondary"
+                    onClick={() => refreshImage()}>
+                    Ververs afbeelding
+                </Button>}
+                <ImageUploader
+                    defaultImageId={featuredImageId}
+                    onChange={(media) => onUpdateImage(media)}
+                />
+            </CacheProvider>}
         </div>
     );
 }

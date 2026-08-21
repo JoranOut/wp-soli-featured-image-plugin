@@ -43,8 +43,49 @@ test.describe( 'Plugin activation', () => {
 		const { status, body } = await authenticatedRest( page, nonce, {
 			route: '/wp/v2/block-types/soli/featured-image',
 		} );
+		const editorStyles =
+			body.editor_style_handles || body.editor_style || [];
 
 		expect( status ).toBe( 200 );
 		expect( body.name ).toBe( 'soli/featured-image' );
+		expect( Array.isArray( editorStyles ) ? editorStyles : [ editorStyles ] ).toContain(
+			'block-featured-image-css'
+		);
+	} );
+
+	test( 'loads the block stylesheet inside the editor canvas iframe', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		await page.goto( '/wp-admin/post-new.php?post_type=page' );
+
+		const editorFrame = page.locator( 'iframe[name="editor-canvas"]' );
+		await expect( editorFrame ).toHaveCount( 1 );
+
+		const iframeAssets = await editorFrame.evaluate( ( iframe ) => {
+			const doc = iframe.contentDocument;
+
+			return {
+				stylesheets: Array.from(
+					doc.querySelectorAll( 'link[rel="stylesheet"]' ),
+					( link ) => link.href
+				),
+				emotionStyles: Array.from(
+					doc.querySelectorAll( 'style[data-emotion]' ),
+					( style ) => style.getAttribute( 'data-emotion' ) || ''
+				),
+			};
+		} );
+
+		expect(
+			iframeAssets.stylesheets.some( ( href ) =>
+				href.includes( '/blocks/featured-image/build/index.css' )
+			)
+		).toBe( true );
+		expect(
+			iframeAssets.emotionStyles.some( ( key ) =>
+				key.startsWith( 'soli-featured-image' )
+			)
+		).toBe( true );
 	} );
 } );

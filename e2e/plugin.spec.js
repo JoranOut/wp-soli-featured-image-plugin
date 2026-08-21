@@ -60,7 +60,11 @@ test.describe( 'Plugin activation', () => {
 		await page.goto( '/wp-admin/post-new.php?post_type=page' );
 
 		const editorFrame = page.locator( 'iframe[name="editor-canvas"]' );
+		const editorCanvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
 		await expect( editorFrame ).toHaveCount( 1 );
+		await expect( editorCanvas.locator( '.soli-featured-image' ) ).toHaveCount(
+			1
+		);
 
 		const iframeAssets = await editorFrame.evaluate( ( iframe ) => {
 			const doc = iframe.contentDocument;

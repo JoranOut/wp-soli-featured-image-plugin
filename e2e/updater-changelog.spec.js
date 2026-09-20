@@ -37,12 +37,17 @@ test.describe( 'Updater changelog', () => {
 	} );
 
 	test( 'details modal shows a stable-channel changelog linking each release', async ( { page } ) => {
-		// The same page WordPress opens in the "View version details" thickbox.
-		await page.goto(
-			'/wp-admin/plugin-install.php?tab=plugin-information&plugin=' +
-				encodeURIComponent( SLUG ) +
-				'&section=changelog'
-		);
+		// Follow the real "View version details" link rather than a hand-built
+		// URL: core builds it from the transient's slug (the folder name), and
+		// a hand-built URL once hid that the updater rejected exactly that slug
+		// with "Plugin not found".
+		const notice = page.locator( `tr.plugin-update-tr[data-plugin="${ SLUG }"]` );
+		const detailsHref = await notice
+			.getByRole( 'link', { name: /View .*version .* details/ } )
+			.getAttribute( 'href' );
+		expect( detailsHref ).toContain( 'plugin=wp-soli-featured-image-plugin&' );
+		await page.goto( detailsHref.replace( /&TB_iframe=true.*$/, '' ) );
+		await expect( page.locator( 'body' ) ).not.toContainText( 'Plugin not found' );
 		await expectNoPhpDiagnostics( page );
 
 		// Core reads ->name for the heading; without it the page prints a
@@ -76,6 +81,9 @@ test.describe( 'Updater changelog', () => {
 		// A hostile release body is escaped, not executed.
 		await expect( changelog.locator( 'script' ) ).toHaveCount( 0 );
 		await expect( changelog ).toContainText( '<script>alert(1)</script>' );
+
+		// With the folder-name slug core recognises the installed copy.
+		await expect( page.getByRole( 'button', { name: /Update .* now/ } ) ).toBeVisible();
 
 		// The homepage link in the modal sidebar points at the release list.
 		await expect( page.getByRole( 'link', { name: /Plugin Homepage/ } ) ).toHaveAttribute(

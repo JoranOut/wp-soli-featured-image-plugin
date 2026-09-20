@@ -746,15 +746,23 @@ class WP_GitHub_Updater {
 	 */
 	public function get_plugin_info( $false, $action, $response ) {
 
-		// Check if this call API is for the right plugin
-		if ( !isset( $response->slug ) || $response->slug != $this->config['slug'] )
-			return false;
+		// Check if this call API is for the right plugin. WordPress builds the
+		// "View version details" link from the update transient's slug, which
+		// api_check() sets to the folder name, so accept that as well as the
+		// plugin_basename form. Only the folder name ever arrives from core.
+		if ( ! isset( $response->slug ) )
+			return $false;
+
+		if ( $response->slug !== $this->config['slug'] && $response->slug !== $this->config['proper_folder_name'] )
+			return $false;
 
 		// Only reached on this plugin's details screen, so the lookup is worth
 		// making here; every other plugins_api call costs nothing.
 		$this->resolve_remote();
 
-		$response->slug = $this->config['slug'];
+		// The folder name is what core compares against installed plugins
+		// (install_plugin_install_status), so the modal offers "Update Now".
+		$response->slug = $this->config['proper_folder_name'];
 		// Core's details screen reads ->name (a notice without it) and uses
 		// it to recognise the installed copy, which turns "Install Now" into
 		// "Update Now". plugin_name is kept for anything already reading it.

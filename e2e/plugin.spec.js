@@ -15,7 +15,7 @@ test.describe( 'Plugin activation', () => {
 		await loginAsAdmin( page );
 		await page.goto( '/wp-admin/plugins.php' );
 
-		const row = page.locator( 'tr.active', {
+		const row = page.locator( 'tr.active:not(.plugin-update-tr)', {
 			hasText: 'Soli Featured Image Plugin',
 		} );
 

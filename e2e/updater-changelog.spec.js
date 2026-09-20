@@ -1,0 +1,86 @@
+/**
+ * The GitHub updater's plugin-details modal and update-row links.
+ *
+ * GitHub is mocked by e2e/fixtures/mu-plugins/mock-github-releases.php, which
+ * .wp-env.json maps into the tests environment only. The mock advertises
+ * v9.0.0 (stable) and v9.0.0-nightly.120 (nightly), both newer than anything
+ * this plugin will ever ship, so an update is always offered.
+ */
+
+const { test, expect } = require( '@playwright/test' );
+const { loginAsAdmin, expectNoPhpDiagnostics } = require( './helpers' );
+
+const REPO = 'https://github.com/JoranOut/wp-soli-featured-image-plugin';
+const SLUG = 'wp-soli-featured-image-plugin/soli-featured-image-plugin.php';
+
+test.describe( 'Updater changelog', () => {
+	test.beforeEach( async ( { page } ) => {
+		await loginAsAdmin( page );
+		// Only update-core.php honours force-check; plugins.php throttles its
+		// own check to once an hour and would show whatever transient a
+		// previous request (or a wp-cli run, which has no admin hooks) left.
+		await page.goto( '/wp-admin/update-core.php?force-check=1' );
+		await page.goto( '/wp-admin/plugins.php' );
+	} );
+
+	test( 'update row links to the release and the release list on GitHub', async ( { page } ) => {
+		const notice = page.locator( `tr.plugin-update-tr[data-plugin="${ SLUG }"]` );
+		await expect( notice ).toContainText( '9.0.0' );
+
+		const releaseLink = notice.getByRole( 'link', { name: 'Release notes on GitHub' } );
+		await expect( releaseLink ).toHaveAttribute( 'href', `${ REPO }/releases/tag/v9.0.0` );
+		await expect( notice.getByRole( 'link', { name: 'All releases' } ) ).toHaveAttribute(
+			'href',
+			`${ REPO }/releases`
+		);
+		await expectNoPhpDiagnostics( page );
+	} );
+
+	test( 'details modal shows a stable-channel changelog linking each release', async ( { page } ) => {
+		// The same page WordPress opens in the "View version details" thickbox.
+		await page.goto(
+			'/wp-admin/plugin-install.php?tab=plugin-information&plugin=' +
+				encodeURIComponent( SLUG ) +
+				'&section=changelog'
+		);
+		await expectNoPhpDiagnostics( page );
+
+		// Core reads ->name for the heading; without it the page prints a
+		// PHP notice (caught above) and shows no title.
+		await expect( page.locator( '#plugin-information-title' ) ).toContainText( 'Soli Featured Image Plugin' );
+
+		const changelog = page.locator( '#section-changelog' );
+		await expect( changelog ).toBeVisible();
+		await expect( changelog ).toContainText( 'Showing the stable channel' );
+
+		await expect( changelog.getByRole( 'link', { name: 'All releases on GitHub' } ) ).toHaveAttribute(
+			'href',
+			`${ REPO }/releases`
+		);
+		await expect( changelog.getByRole( 'link', { name: '9.0.0', exact: true } ) ).toHaveAttribute(
+			'href',
+			`${ REPO }/releases/tag/v9.0.0`
+		);
+		await expect( changelog.getByRole( 'link', { name: '8.9.0', exact: true } ) ).toHaveAttribute(
+			'href',
+			`${ REPO }/releases/tag/v8.9.0`
+		);
+
+		// Release notes are rendered from Markdown, and stable installs never
+		// see nightlies or drafts.
+		await expect( changelog.locator( 'li', { hasText: 'Second stable change' } ) ).toBeVisible();
+		await expect( changelog.locator( 'strong', { hasText: 'bold' } ) ).toBeVisible();
+		await expect( changelog ).not.toContainText( 'nightly' );
+		await expect( changelog ).not.toContainText( 'Draft must not appear' );
+
+		// A hostile release body is escaped, not executed.
+		await expect( changelog.locator( 'script' ) ).toHaveCount( 0 );
+		await expect( changelog ).toContainText( '<script>alert(1)</script>' );
+
+		// The homepage link in the modal sidebar points at the release list.
+		await expect( page.getByRole( 'link', { name: /Plugin Homepage/ } ) ).toHaveAttribute(
+			'href',
+			`${ REPO }/releases`
+		);
+	} );
+} );

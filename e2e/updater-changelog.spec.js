@@ -83,7 +83,7 @@ test.describe( 'Updater changelog', () => {
 		await expect( changelog ).toContainText( '<script>alert(1)</script>' );
 
 		// With the folder-name slug core recognises the installed copy.
-		await expect( page.getByRole( 'link', { name: 'Update Now' } ) ).toBeVisible();
+		await expect( page.getByRole( 'button', { name: /Update .* now/ } ) ).toBeVisible();
 
 		// The homepage link in the modal sidebar points at the release list.
 		await expect( page.getByRole( 'link', { name: /Plugin Homepage/ } ) ).toHaveAttribute(

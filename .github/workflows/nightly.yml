@@ -140,7 +140,8 @@ jobs:
           # build and the updater can show them in its changelog. Sort by the
           # commit-count suffix, not by creation date: a re-run of an old build
           # must not survive a newer one. The new nightly is not created yet,
-          # so keep KEEP-1 to leave room for it.
+          # so keep KEEP-1 to leave room for it. The first retained
+          # nightly after this change was verified by hand on 2026-09-20.
           gh release list --limit 200 --json tagName \
             --jq '.[] | select(.tagName | contains("nightly")) | .tagName' \
             | awk -F'nightly.' '{ print $2 "\t" $0 }' | sort -rn | cut -f2 \

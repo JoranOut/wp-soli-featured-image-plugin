@@ -18,7 +18,7 @@ Plugin for wordpress dedicated to displaying an automated featured image block o
 -->
 
 Contains:
-- A featured image block by default on all posts/pages/events
+- A featured image block by default on all posts/pages/events (editor-only: it sets the featured image and orchestra categories and renders nothing on the front end)
 - Global image categories
 
 # Development

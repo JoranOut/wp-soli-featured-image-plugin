@@ -58,38 +58,12 @@ class SoliFeaturedImageBlock {
     ));
   }
 
+  /**
+   * The block is an editor-side tool: it sets the post's featured image and
+   * orchestra categories. It deliberately renders nothing on the front end.
+   */
   function theHTML($attributes, $content, $block) {
-    $frontend_asset = $this->assetMeta('frontend', array('wp-element'));
-
-    wp_enqueue_script('block-featured-image-frontend', plugin_dir_url(__FILE__) . 'build/frontend.js', $frontend_asset['dependencies'], $frontend_asset['version'], true);
-    wp_enqueue_style('block-featured-image-frontend-styles', plugin_dir_url(__FILE__) . 'build/frontend.css');
-
-    $post_id = get_the_ID();
-    $category_names = array();
-
-    if ($post_id) {
-      $post_categories = wp_get_post_categories($post_id, array('fields' => 'all'));
-
-      if (!is_wp_error($post_categories)) {
-        // Only orchestra categories (under the 'orkesten' parent) can map an
-        // image; stale enabled-meta on other categories must not apply.
-        $orkesten_ids = soli_featured_image_orkesten_category_ids();
-        foreach ($post_categories as $category) {
-          if (!in_array((int) $category->term_id, $orkesten_ids, true)) {
-            continue;
-          }
-          $enabled = get_term_meta($category->term_id, 'soli_featured_image_enabled', true);
-          if ($enabled) {
-            $category_names[] = $category->name;
-          }
-        }
-      }
-    }
-
-    ob_start(); ?>
-      <div class="block-featured-image"
-           data-attributes="<?php echo htmlspecialchars(json_encode($category_names), ENT_QUOTES, 'UTF-8'); ?>"></div>
-    <?php return ob_get_clean();
+    return '';
   }
 }
 

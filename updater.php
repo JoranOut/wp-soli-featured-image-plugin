@@ -107,8 +107,13 @@ class WP_GitHub_Updater {
 
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'api_check' ) );
 
-		// Hook into the plugin details screen
-		add_filter( 'plugins_api', array( $this, 'get_plugin_info' ), 10, 3 );
+		// Hook into the plugin details screen. Run late: every sibling Soli
+		// plugin still on updater 1.7 hooks this filter at 10 and returns a
+		// literal false for any slug but its own, discarding whatever an
+		// earlier filter built. WordPress then asks wordpress.org, which
+		// answers "Plugin not found" and wp_die()s with a 500. At this
+		// priority the legacy filters have all run before ours.
+		add_filter( 'plugins_api', array( $this, 'get_plugin_info' ), 1000, 3 );
 		add_action( 'in_plugin_update_message-' . $this->config['slug'], array( $this, 'update_message' ), 10, 2 );
 		add_filter( 'upgrader_post_install', array( $this, 'upgrader_post_install' ), 10, 3 );
 

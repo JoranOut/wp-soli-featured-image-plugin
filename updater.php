@@ -37,7 +37,7 @@ class WP_GitHub_Updater {
 	/**
 	 * GitHub Updater version
 	 */
-	const VERSION = 1.8;
+	const VERSION = 1.9;
 
 	/**
 	 * @var $config the config for the updater
@@ -545,16 +545,23 @@ class WP_GitHub_Updater {
 	 */
 	public function get_changelog_html() {
 		$releases = $this->get_channel_releases();
-		$channel_label = $this->is_nightly_version( $this->config['version'] ) ? 'nightly' : 'stable';
+		$nightly = $this->is_nightly_version( $this->config['version'] );
 
-		$html = '<p><a href="' . esc_url( $this->get_releases_url() ) . '" target="_blank" rel="noopener">'
-			. esc_html__( 'All releases on GitHub', 'github_plugin_updater' ) . '</a>'
-			. ' &middot; ' . sprintf( esc_html__( 'Showing the %s channel', 'github_plugin_updater' ), esc_html( $channel_label ) )
-			. '</p>';
+		// No stylesheet: core runs these sections through wp_kses with a tag
+		// list that has no `style` element and no `style` attribute, so a rule
+		// set would be stripped and its text printed into the page. Readability
+		// here comes from the markup alone - a heading per release, the commit
+		// list under it, and nothing else.
+		$html = '<div class="soli-changelog">';
+		$html .= '<p>'
+			. ( $nightly
+				? esc_html__( 'Nightly builds, newest first.', 'github_plugin_updater' )
+				: esc_html__( 'Releases, newest first.', 'github_plugin_updater' ) )
+			. ' <a href="' . esc_url( $this->get_releases_url() ) . '" target="_blank" rel="noopener">'
+			. esc_html__( 'View all on GitHub', 'github_plugin_updater' ) . '</a></p>';
 
-		if ( empty( $releases ) ) {
-			return $html . '<p>' . esc_html__( 'No releases found in this channel.', 'github_plugin_updater' ) . '</p>';
-		}
+		if ( empty( $releases ) )
+			return $html . '<p>' . esc_html__( 'No releases found in this channel.', 'github_plugin_updater' ) . '</p></div>';
 
 		foreach ( $releases as $release ) {
 			$version = ltrim( $release->tag_name, 'vV' );
@@ -563,17 +570,82 @@ class WP_GitHub_Updater {
 
 			$html .= '<h4><a href="' . esc_url( $this->get_release_url( $release->tag_name ) ) . '" target="_blank" rel="noopener">'
 				. esc_html( $version ) . '</a>';
-			if ( '' !== $date )
-				$html .= ' <small>' . esc_html( $date ) . '</small>';
+			$note = esc_html( $date );
+
 			if ( $installed )
-				$html .= ' <em>(' . esc_html__( 'installed', 'github_plugin_updater' ) . ')</em>';
+				$note = ( '' === $note )
+					? esc_html__( 'installed', 'github_plugin_updater' )
+					: $note . ' &mdash; ' . esc_html__( 'installed', 'github_plugin_updater' );
+
+			if ( '' !== $note )
+				$html .= ' <em>' . $note . '</em>';
+
 			$html .= '</h4>';
 
-			if ( ! empty( $release->body ) )
-				$html .= wp_kses_post( $this->markdown_to_html( $release->body ) );
+			$body = $this->strip_release_boilerplate( isset( $release->body ) ? $release->body : '' );
+
+			$html .= ( '' === $body )
+				? '<p class="soli-changelog-meta">' . esc_html__( 'No notes.', 'github_plugin_updater' ) . '</p>'
+				: wp_kses_post( $this->markdown_to_html( $body ) );
 		}
 
-		return $html;
+		return $html . '</div>';
+	}
+
+
+	/**
+	 * Drop the repeated scaffolding from a release body
+	 *
+	 * The release and nightly workflows wrap the commit list in metadata that
+	 * is already on screen - version, build number, source commit, a fixed
+	 * disclaimer, a "Changes" heading above the only content there is, and a
+	 * compare URL the version heading already links to. Repeated once per
+	 * release it buries the three lines that actually differ, so it is
+	 * dropped here rather than in the workflows alone: releases published
+	 * before this change are retained for weeks and carry the old body.
+	 *
+	 * Everything after a horizontal rule goes too, which is where both
+	 * workflows put their trailing metadata.
+	 *
+	 * @since 1.9
+	 * @param string $markdown the release body
+	 * @return string the remaining Markdown, trimmed
+	 */
+	public function strip_release_boilerplate( $markdown ) {
+		$markdown = (string) $markdown;
+
+		// Everything below the first horizontal rule is trailing metadata.
+		$parts = preg_split( '/^\s*-{3,}\s*$/m', $markdown, 2 );
+		$markdown = $parts[0];
+
+		$drop = array(
+			'/^automated nightly build from main branch\.?$/i',
+			'/^this is a pre-release build for testing purposes\.?$/i',
+			'/^\*\*(version|build|built from|full changelog):\*\*/i',
+			'/^(version|build|built from|full changelog):/i',
+			'/^#{1,6}\s*changes\s*$/i',
+			'/^the build number is the commit count/i',
+			'/^when commits land/i',
+		);
+
+		$kept = array();
+
+		foreach ( preg_split( '/\r\n|\r|\n/', $markdown ) as $line ) {
+			$trimmed = trim( $line );
+			$skip = false;
+
+			foreach ( $drop as $pattern ) {
+				if ( preg_match( $pattern, $trimmed ) ) {
+					$skip = true;
+					break;
+				}
+			}
+
+			if ( ! $skip )
+				$kept[] = $line;
+		}
+
+		return trim( implode( "\n", $kept ) );
 	}
 
 

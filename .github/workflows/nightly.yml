@@ -156,7 +156,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # List the commits since the previous surviving nightly, so every
-          # nightly page says what changed. The version stamp is uncommitted,
+          # nightly page says what changed. Keep the body to the commits: the
+          # updater renders these notes in the plugin details modal, one
+          # release after another, where repeated metadata buries them. The
+          # build details go below a horizontal rule, which the updater cuts. The version stamp is uncommitted,
           # so HEAD is the built commit.
           PREV_TAG=$(git tag -l 'v*-nightly.*' --sort=-v:refname | head -1)
           if [ -n "$PREV_TAG" ] && git merge-base --is-ancestor "$PREV_TAG" HEAD 2>/dev/null; then
@@ -167,20 +170,12 @@ jobs:
             COMPARE=""
           fi
           {
-            echo "Automated nightly build from main branch."
-            echo
-            echo "**Version:** ${{ steps.version.outputs.nightly_version }}"
-            echo "**Build:** ${{ steps.version.outputs.build }} commits on main"
-            echo "**Built from:** ${{ github.sha }} on ${{ steps.version.outputs.date }}"
-            echo
-            echo "## Changes"
-            echo
             echo "${COMMITS:-- No commit summary available}"
             echo
-            [ -n "$COMPARE" ] && echo "$COMPARE" && echo
             echo "---"
             echo
-            echo "This is a pre-release build for testing purposes."
+            echo "Pre-release build ${{ steps.version.outputs.nightly_version }}, ${{ steps.version.outputs.build }} commits on main, built from ${{ github.sha }} on ${{ steps.version.outputs.date }}."
+            [ -n "$COMPARE" ] && echo && echo "$COMPARE"
           } > nightly_notes.md
           cat nightly_notes.md
 

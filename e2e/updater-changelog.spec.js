@@ -16,9 +16,11 @@ const SLUG = 'wp-soli-featured-image-plugin/soli-featured-image-plugin.php';
 test.describe( 'Updater changelog', () => {
 	test.beforeEach( async ( { page } ) => {
 		await loginAsAdmin( page );
-		// Only update-core.php honours force-check; plugins.php throttles its
+		// Drop any cached check first (see the mu-plugin fixture), then force a
+		// fresh one. Only update-core.php honours force-check; plugins.php throttles its
 		// own check to once an hour and would show whatever transient a
 		// previous request (or a wp-cli run, which has no admin hooks) left.
+		await page.goto( '/wp-admin/index.php?soli_reset_updates=1' );
 		await page.goto( '/wp-admin/update-core.php?force-check=1' );
 		await page.goto( '/wp-admin/plugins.php' );
 	} );
@@ -56,9 +58,9 @@ test.describe( 'Updater changelog', () => {
 
 		const changelog = page.locator( '#section-changelog' );
 		await expect( changelog ).toBeVisible();
-		await expect( changelog ).toContainText( 'Showing the stable channel' );
+		await expect( changelog ).toContainText( 'Releases, newest first.' );
 
-		await expect( changelog.getByRole( 'link', { name: 'All releases on GitHub' } ) ).toHaveAttribute(
+		await expect( changelog.getByRole( 'link', { name: 'View all on GitHub' } ) ).toHaveAttribute(
 			'href',
 			`${ REPO }/releases`
 		);
@@ -77,6 +79,14 @@ test.describe( 'Updater changelog', () => {
 		await expect( changelog.locator( 'strong', { hasText: 'bold' } ) ).toBeVisible();
 		await expect( changelog ).not.toContainText( 'nightly' );
 		await expect( changelog ).not.toContainText( 'Draft must not appear' );
+
+		// The scaffolding both workflows wrap around the commit list is dropped:
+		// it repeats per release and buries the lines that actually differ.
+		await expect( changelog ).not.toContainText( 'Automated nightly build' );
+		await expect( changelog ).not.toContainText( 'Built from' );
+		await expect( changelog ).not.toContainText( 'pre-release build for testing' );
+		await expect( changelog ).not.toContainText( 'Full Changelog' );
+		await expect( changelog.locator( 'h4' ) ).toHaveCount( 2 );
 
 		// A hostile release body is escaped, not executed.
 		await expect( changelog.locator( 'script' ) ).toHaveCount( 0 );
